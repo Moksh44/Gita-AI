@@ -1,0 +1,9 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+bootstrap.py
+gita_clean.py
+gita.py
+test_rag.py
+.vscode
