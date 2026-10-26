@@ -164,7 +164,7 @@ function sanskritMeanings(id, transliteration) { if (seedById[id]?.meanings) ret
 function freshState() {
     return {
         version: 1,
-        settings: { name: '', apiUrl: 'http://localhost:8000', connected: false, provider: 'safety', preferredProvider: 'gemini', country: 'global', language: 'en', theme: 'system' },
+        settings: { name: '', apiUrl: 'http://localhost:8000', connected: false, provider: 'gemini', preferredProvider: 'gemini', country: 'global', language: 'en', theme: 'system' },
         chats: [],
         journals: [],
         bookmarks: [],
@@ -406,9 +406,9 @@ async function loadCorpus(notify = false, force = false) {
             if (notify) toast('All 701 verses are ready to explore.');
             return corpus;
         } catch (error) { corpusError = true; if (notify) toast('The full library could not be reached. Your 30 offline verses are still available.'); throw error; }
-        finally { 
-            corpusLoading = false; 
-            corpusPromise = null; 
+        finally {
+            corpusLoading = false;
+            corpusPromise = null;
             if (route === 'library') renderLibraryResults(); if (route === 'overview') renderOverview();
         }
 
@@ -671,9 +671,10 @@ function renderThemes() {
 function renderChat() {
     const current = state.chats.find(c => c.id === currentChatId);
     const titleHtml = animatedTitle('Gita Intelligence', 'గీతా ఏఐ', 'గీతా ఏఐ');
-    const currentProvider = (state.settings.provider && state.settings.provider !== 'offline')
-        ? (state.settings.provider.charAt(0).toUpperCase() + state.settings.provider.slice(1))
-        : 'Gemini';
+    const activeProv = ['gemini', 'groq'].includes(state.settings.provider)
+    ? state.settings.provider
+    : (['gemini', 'groq'].includes(state.settings.preferredProvider) ? state.settings.preferredProvider : 'gemini');
+const currentProvider = activeProv.charAt(0).toUpperCase() + activeProv.slice(1);
 
     const chatActions = `
         <div class="chat-header-actions">
@@ -1009,7 +1010,7 @@ function renderSettings() {
         </section>
     </div>
     <div class="page-footer">
-        <button data-action="sources" style="text-decoration: underline;">Data & source credits</button>
+        <button data-action="sources" style="text-decoration: underline;">Source Credits</button>
     </div>
     `, 'settings-page');
 }
@@ -1173,7 +1174,7 @@ function openVerse(id) {
     const isCoolingDown = isLocked();
 
     const rawSanskrit = state.settings.language === 'te' && v.sanskrit_te ? v.sanskrit_te : v.sanskrit;
-const activeSanskrit = rawSanskrit ? rawSanskrit.replace(/(?<!।)\s*।\s+(?!।)/g, ' ।\n') : '';
+    const activeSanskrit = rawSanskrit ? rawSanskrit.replace(/(?<!।)\s*।\s+(?!।)/g, ' ।\n') : '';
     const activeMeaning = state.settings.language === 'te' && v.telugu ? v.telugu : v.english;
     const rangeNote = (state.settings.language === 'te' && v.telugu_range)
         ? `<p class="modal-explanation">ఈ అనువాదం ${escapeHTML(v.telugu_range.replace('-', '–'))} శ్లోకాలకు కలిపి ఇవ్వబడింది.</p>`
@@ -1243,7 +1244,11 @@ function openBookmarkNote(id) {
 }
 
 function showSources() {
-    openModal('Wisdom, with its roots intact.', 'About this collection and its sources.', `<p class="confirm-copy">The full collection contains 701 verses across 18 chapters, including Arjuna's opening question in chapter 13. Some editions omit that question and contain 700 verses.</p><p class="modal-explanation">Sanskrit: the ancient Bhagavad Gita text, from gita/gita under The Unlicense. English: Annie Besant, <em>The Bhagavad-Gita</em>, 4th edition (1922), public domain. Transliteration is mechanically derived from the Sanskrit. The complete data is maintained by the GitaVerses project.</p><p class="modal-explanation">The 30 bundled starter verses are clearly labeled plain-language renderings, not verbatim quotations from a named translator. The overview quote is a short plain-language rendering of BG 2.47. Full quotations use the loaded corpus. Interpretive notes are for reflection, not a replacement for study in context.</p><p class="modal-explanation">Mountain photography by Etem Ko&ccedil;ak on Pexels.</p><div class="settings-actions"><a class="btn btn-secondary" href="https://github.com/ravitejakamalapuram/GitaVerses/blob/main/CREDITS.md" target="_blank" rel="noopener noreferrer">Corpus credits ${icon('arrow')}</a><a class="btn btn-secondary" href="https://en.wikisource.org/wiki/Bhagavad-Gita_(Besant_4th)" target="_blank" rel="noopener noreferrer">Read the source edition ${icon('book')}</a></div>`);
+    openModal(
+        'Source Credits',
+        '',
+        `<p class="confirm-copy">The full collection contains 701 verses across 18 chapters, including Arjuna's opening question in chapter 13. Some editions omit that question and contain 700 verses.</p><p class="modal-explanation">Sanskrit: the ancient Bhagavad Gita text, from gita/gita under The Unlicense. English: Annie Besant, <em>The Bhagavad-Gita</em>, 4th edition (1922), public domain. Telugu script &amp; translations: compiled from public-domain Telugu Bhagavad Gita editions. Transliteration is mechanically derived from the Sanskrit. The complete English and Sanskrit data is maintained by the GitaVerses project.</p><p class="modal-explanation" style="margin-bottom: 4px;">The 30 bundled starter verses are clearly labeled plain-language renderings, not verbatim quotations from a named translator. Full quotations use the loaded corpus. Interpretive notes are for reflection, not a replacement for study in context.</p>`
+    );
 }
 
 async function connectBackend(silent = false) {
@@ -1341,12 +1346,12 @@ document.addEventListener('click', async event => {
             render();
             window.isLangSwitch = false;
             break;
-        case 'new-chat': 
-            currentChatId = null; 
+        case 'new-chat':
+            currentChatId = null;
             window.isSoftNavigate = true;
-            navigate('chat'); 
+            navigate('chat');
             window.isSoftNavigate = false;
-            setTimeout(() => $('#chat-input')?.focus(), 60); 
+            setTimeout(() => $('#chat-input')?.focus(), 60);
             break;
         case 'prompt': if (route !== 'chat') currentChatId = null; await sendMessage(prompt); break;
         case 'quick-mood': {
@@ -1465,16 +1470,16 @@ document.addEventListener('click', async event => {
         case 'select-region': {
             const val = button.dataset.value;
             const label = button.dataset.label;
-            
+
             const input = $('#country-input');
             if (input) input.value = val;
-            
+
             const textEl = $('#region-display');
             if (textEl) textEl.innerHTML = label;
-            
+
             $('#region-menu')?.classList.remove('open');
             $('#region-dropdown .dropdown-trigger')?.setAttribute('aria-expanded', 'false');
-            
+
             $$('#region-menu .dropdown-option').forEach(opt => {
                 opt.classList.toggle('selected', opt.dataset.value === val);
             });
@@ -1541,17 +1546,17 @@ document.addEventListener('click', async event => {
             break;
         }
         case 'load-corpus': loadCorpus(true).catch(() => { }); renderLibraryResults(); break;
-        case 'open-chat': 
-            currentChatId = id; 
+        case 'open-chat':
+            currentChatId = id;
             window.isSoftNavigate = true;
-            renderChat(); 
+            renderChat();
             window.isSoftNavigate = false;
             break;
         case 'rename-chat': { const chat = state.chats.find(c => c.id === id); if (!chat) break; openModal('Rename Conversation', '', `<form id="rename-form" data-id="${attr(id)}"><label class="form-field"><span>CONVERSATION TITLE</span><input class="text-input" name="title" maxlength="100" value="${attr(chat.title)}" required></label><div class="modal-footer"><span></span><div><button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary">Save</button></div></div></form>`); break; }
         case 'delete-chat': confirmAction('Delete Conversation', 'The messages will be deleted from this browser. Your saved verses and reflections will stay.', 'Delete', () => { pendingRequests.get(id)?.abort(); state.chats = state.chats.filter(c => c.id !== id); busyChats.delete(id); if (currentChatId === id) currentChatId = null; saveState(); render(); toast('Conversation Deleted'); }); break;
         case 'edit-message': { const chat = state.chats.find(c => c.id === currentChatId), m = chat?.messages[Number(index)]; if (!m || busyChats.has(currentChatId)) break; openModal('Edit Query', '', `<form id="edit-message-form" data-index="${index}" data-chat="${attr(currentChatId)}"><label class="form-field"><span>YOUR MESSAGE</span><textarea name="message" class="text-input" maxlength="4000" required>${escapeHTML(m.content)}</textarea></label><div class="modal-footer"><span></span><div><button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary">Send</button></div></div></form>`); break; }
         case 'reflect-message': { const m = state.chats.find(c => c.id === currentChatId)?.messages[Number(index)]; if (m) openJournal(null, ''); break; }
-        case 'copy-message': { const m = state.chats.find(c => c.id === currentChatId)?.messages[Number(index)]; if (!m) break; try { await navigator.clipboard.writeText(m.content); toast('Words to take with you, copied.'); } catch (error) { openModal('Words to take with you.', 'Select and copy the text below.', `<textarea class="text-input" rows="12" readonly>${escapeHTML(m.content)}</textarea>`); } break; }
+        case 'copy-message': { const m = state.chats.find(c => c.id === currentChatId)?.messages[Number(index)]; if (!m) break; try { await navigator.clipboard.writeText(m.content); toast('Copied'); } catch (error) { openModal('Words to take with you.', 'Select and copy the text below.', `<textarea class="text-input" rows="12" readonly>${escapeHTML(m.content)}</textarea>`); } break; }
         case 'sources': showSources(); break;
         case 'open-settings': closeModal(); navigate('settings'); break;
         case 'toggle-provider-menu': {
@@ -1616,16 +1621,16 @@ document.addEventListener('submit', async event => {
             window.voiceInput.stop();
             return; // Stops here, DOES NOT send the query!
         }
-        if (isLocked()) { toast('Please wait for the cooldown to finish.'); return; } 
-        const input = $('#chat-input'), text = input.value; 
-        if (text.trim()) { 
-            input.value = ''; 
-            await sendMessage(text); 
-        } 
-    } 
-    else if (form.id === 'quick-chat-form') { 
-        if (isLocked()) { toast('Please wait for the cooldown to finish.'); return; } 
-        const q = new FormData(form).get('question'); currentChatId = null; await sendMessage(String(q)); 
+        if (isLocked()) { toast('Please wait for the cooldown to finish.'); return; }
+        const input = $('#chat-input'), text = input.value;
+        if (text.trim()) {
+            input.value = '';
+            await sendMessage(text);
+        }
+    }
+    else if (form.id === 'quick-chat-form') {
+        if (isLocked()) { toast('Please wait for the cooldown to finish.'); return; }
+        const q = new FormData(form).get('question'); currentChatId = null; await sendMessage(String(q));
     }
     else if (form.id === 'journal-form') { const f = new FormData(form), title = String(f.get('title')).trim(), body = String(f.get('body')).trim(); if (!title || !body) { showJournalError('Give this reflection a title and a few words'); return; } if (!journalDraftMood) { showJournalError('Please select how you feel'); return; } const entry = state.journals.find(j => j.id === form.dataset.id), now = new Date().toISOString(); if (entry) Object.assign(entry, { title, body, mood: journalDraftMood, updatedAt: now, example: false }); else state.journals.unshift({ id: uid(), title, body, mood: journalDraftMood, createdAt: now, updatedAt: now, example: false }); const persisted = saveState(); closeModal(); render(); toast(persisted ? 'Saved' : 'This reflection is not saved. Export your data before leaving.'); }
     else if (form.id === 'note-form') { const note = state.bookmarks.find(b => b.id === form.dataset.id); let persisted = false; if (note) { note.note = String(new FormData(form).get('note')).trim(); persisted = saveState(); } closeModal(); render(); toast(persisted ? 'Your note is saved' : 'Your note is here for this visit. Export your data to keep it.'); }
@@ -1660,7 +1665,7 @@ $('#modal').addEventListener('cancel', () => { confirmCallback = null; });
 $('#modal').addEventListener('close', () => { document.body.style.overflow = ''; });
 $('#import-input').addEventListener('change', async event => { const file = event.target.files[0]; event.target.value = ''; if (!file) return; if (file.size > 15 * 1024 * 1024) { toast('That backup is too large. The limit is 15 MB.'); return; } try { const parsed = JSON.parse(await file.text()); if (parsed.app !== 'gita-ai') throw new Error('Please choose a Gita AI backup.'); const imported = validateImport(parsed.data); confirmAction('Restore this chapter?', 'This will replace your current local data with the backup. Connection settings are reset to Offline Wisdom. Export your current space first if you want to keep it.', 'Restore backup', () => { dataEpoch++; pendingRequests.forEach(c => c.abort()); busyChats.clear(); $('#toasts').replaceChildren(); state = imported; currentChatId = null; connectionStatus = ''; saveState(); render(); toast(' Restore Completed'); }); } catch (error) { toast(error.message || 'This backup could not be read. Your current data is unchanged.'); } });
 window.addEventListener('hashchange', onRouteChange);
-window.addEventListener('storage', event => { if (event.key === STORE_KEY && event.newValue) { try { const next = JSON.parse(event.newValue); if (validState(next)) { state = next; applyTheme(); if (!$('#modal').open && !busyChats.size) render(); } } catch (error) {} } });
+window.addEventListener('storage', event => { if (event.key === STORE_KEY && event.newValue) { try { const next = JSON.parse(event.newValue); if (validState(next)) { state = next; applyTheme(); if (!$('#modal').open && !busyChats.size) render(); } } catch (error) { } } });
 window.addEventListener('scroll', checkScrollTitle, { passive: true });
 window.matchMedia('(max-width:760px)').addEventListener('change', syncSidebarAccess);
 if (systemThemeQuery) {
@@ -1725,8 +1730,10 @@ async function switchProvider(providerName) {
 }
 
 function syncProviderUI() {
-    const p = state.settings.provider;
-    const name = (p && p !== 'offline') ? p.charAt(0).toUpperCase() + p.slice(1) : 'Gemini';
+    const p = ['gemini', 'groq'].includes(state.settings.provider)
+        ? state.settings.provider
+        : (['gemini', 'groq'].includes(state.settings.preferredProvider) ? state.settings.preferredProvider : 'gemini');
+    const name = p.charAt(0).toUpperCase() + p.slice(1);
     const label = document.getElementById('current-provider-name');
     if (label) label.textContent = name;
     document.querySelectorAll('#provider-menu .dropdown-option').forEach(o =>
