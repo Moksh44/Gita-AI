@@ -16,7 +16,7 @@ const TOPBAR_TITLES = { overview: 'Overview', journal: 'My Journal', saved: 'Sav
 const MOODS = ['Peaceful', 'Grateful', 'Uncertain', 'Anxious', 'Low'];
 const THEMES = {
     overthinking: {
-        title: 'A quieter mind', title_te: 'ప్రశాంతమైన మనస్సు' ,
+        title: 'A quieter mind', title_te: 'ప్రశాంతమైన మనస్సు',
         name: 'Overthinking', name_te: 'అధిక ఆలోచన',
         icon: 'wind',
         description: 'Find a little space between you and your thoughts.', description_te: 'మీ ఆలోచనల మధ్య కాస్త ప్రశాంతతను వెతకండి.',
