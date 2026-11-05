@@ -38,6 +38,20 @@ Browser UI
 
 The backend is stateless with respect to personal user data. Chat history is sent by the browser only as request context; journals, bookmarks, conversations, and preferences remain in the browser's `localStorage`.
 
+## How the RAG pipeline works
+
+Gita AI uses a lightweight, local retrieval-augmented generation (RAG) pipeline rather than sending every question to the model without context.
+
+1. **Load the corpus:** `gita.json` is loaded when the FastAPI application starts. The corpus contains 701 structured verses with chapter/verse IDs, Sanskrit, transliteration, English and Telugu text, word meanings, and themes.
+2. **Recognize direct references:** The pipeline detects references such as `BG 2.47`, `2.47`, “chapter 2 verse 47”, and related Gita/Sloka wording. When a verse is identified, it becomes the primary reference.
+3. **Retrieve related verses:** For broader questions, the pipeline tokenizes the query and verse metadata, removes common stop words, and scores matching verses with an IDF-weighted term-frequency ranking. The highest-scoring candidates are included only when they meet the relevance threshold.
+4. **Add authoritative context:** The selected verses, their adjacent verses, and any keyword candidates are formatted into separate prompt sections. Directly referenced verses are marked as authoritative; search suggestions are explicitly marked as potentially off-topic.
+5. **Generate a structured answer:** The configured Gemini, Groq, or OpenAI-compatible provider receives the conversation history, user question, language instructions, safety context, and retrieved verse context. It must return JSON containing the response intent, Markdown content, and cited verse IDs.
+6. **Expand citations safely:** The model uses placeholders such as `[BG 2.47]` instead of writing Sanskrit itself. The server replaces those placeholders with the exact Sanskrit/transliteration/translation from `gita.json`, preventing fabricated or mismatched quotations.
+7. **Return citations to the UI:** The API returns the generated response together with the resolved verse objects, allowing the frontend to display the supporting verses and save them.
+
+If a user asks for a specific verse, direct lookup takes priority over keyword search. If no verse is confidently relevant, the model is instructed not to invent a citation. This keeps retrieval helpful while allowing general conversational and reflective questions.
+
 ## Technology
 
 - **Frontend:** HTML, CSS, and vanilla JavaScript
